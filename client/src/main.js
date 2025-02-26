@@ -7,10 +7,15 @@ import Login from './components/Login.vue'
 import Chat from './components/Chat.vue'
 
 const routes = [
-  { path: '/', component: Login },
+  {
+    path: '/login',
+    component: Login,
+  },
+  { path: '/', redirect: '/login' },
   {
     path: '/chat',
     component: Chat,
+    meta: { requiresAuth: true },
     props: (router) => ({ customerId: Number(router.query.customerId) }),
   },
 ]
@@ -18,6 +23,17 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+})
+
+router.beforeEach((to, from, next) => {
+  console.log('-----before each')
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
+  console.log('isLoggedIn:' + isLoggedIn)
+  if (to.meta.requiresAuth && !isLoggedIn) {
+    next('/login')
+  } else {
+    next()
+  }
 })
 
 const app = createApp(App)
