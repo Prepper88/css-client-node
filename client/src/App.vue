@@ -1,6 +1,5 @@
 <template>
   <div id="app">
-    <!-- 根据路由动态渲染组件 -->
     <router-view></router-view>
   </div>
 </template>

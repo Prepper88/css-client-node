@@ -3,22 +3,14 @@ import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import App from './App.vue'
 import { createRouter, createWebHistory } from 'vue-router'
-import CustomerLogin from './components/CustomerLogin.vue'
-//import AgentLogin from './components/AgentLogin.vue'
-import CustomerChat from './components/CustomerChat.vue'
-import AgentChat from './components/AgentChat.vue'
+import Login from './components/Login.vue'
+import Chat from './components/Chat.vue'
 
 const routes = [
-  { path: '/', component: CustomerLogin },
-  //{ path: '/agent', component: AgentLogin },
+  { path: '/', component: Login },
   {
     path: '/chat',
-    component: CustomerChat,
-    props: (router) => ({ customerId: Number(router.query.customerId) }),
-  },
-  {
-    path: '/agent/chat',
-    component: AgentChat,
+    component: Chat,
     props: (router) => ({ customerId: Number(router.query.customerId) }),
   },
 ]
