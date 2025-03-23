@@ -57,7 +57,12 @@ export default {
     // Initialize socket and send customer-inbound event
     initializeSocket() {
       // Connect to the Socket.IO server
-      this.socket = io('http://localhost:3000') // Replace with your server URL
+      this.socket = io('http://localhost:3000')
+
+      this.socket.on('connect_error', (error) => {
+        console.error('Connection error:', error.message)
+        this.addMessage(error, 'system', 'error')
+      })
 
       // Send customer-inbound event with customerId
       this.socket.emit('customer-inbound', this.customerId)
@@ -71,39 +76,56 @@ export default {
 
       // Listen for incoming messages
       this.socket.on('message', (data) => {
-        // Add incoming messages to the chat
-        this.messages.push({
-          content: data.message,
-          sender: data.sendName,
-          time: new Date().toLocaleTimeString(),
-        })
-        // Scroll to the bottom
-        this.$nextTick(() => {
-          const chatWindow = this.$el.querySelector('.chat-window')
-          chatWindow.scrollTop = chatWindow.scrollHeight
-        })
+        this.addMessage(data.message, data.senderName, 'message')
+      })
+
+      this.socket.on('send-message-result', (result) => {
+        console.log('send-message-result:' + JSON.stringify(result))
+        if (result.code == 0) {
+          // Add the message to the local chat
+          this.addMessage(this.inputMessage, 'customer', 'message')
+          // clear input box
+          this.inputMessage = ''
+        } else {
+          console.error('Failed to send message:', result.message)
+          // Push error message to the chat
+          this.addMessage(result.message, 'system', 'error')
+        }
+      })
+
+      // Listen for system messages
+      this.socket.on('system-message', (data) => {
+        this.addMessage(data.content, 'system', data.type)
+      })
+    },
+    addMessage(content, sender, type = 'message') {
+      this.messages.push({
+        content,
+        sender,
+        type,
+        time: new Date().toLocaleTimeString(),
+      })
+      // Scroll to the bottom
+      this.$nextTick(() => {
+        const chatWindow = this.$el.querySelector('.chat-window')
+        if (chatWindow) chatWindow.scrollTop = chatWindow.scrollHeight
       })
     },
     // Send message
     sendMessage() {
       if (this.inputMessage.trim() === '') return
-      // Send message through Socket.IO
-      this.socket.emit('send-message', {
-        from: this.customerId,
-        sessionId: this.sessionId,
-        message: this.inputMessage,
-      }) // Add the message to the local chat
-      this.messages.push({
-        content: this.inputMessage,
-        sender: 'customer',
-        time: new Date().toLocaleTimeString(),
-      })
-      this.inputMessage = ''
-      // Scroll to the bottom
-      this.$nextTick(() => {
-        const chatWindow = this.$el.querySelector('.chat-window')
-        chatWindow.scrollTop = chatWindow.scrollHeight
-      })
+      try {
+        // Send message through Socket.IO
+        this.socket.emit('send-message', {
+          from: this.customerId,
+          sessionId: this.sessionId,
+          message: this.inputMessage,
+        })
+      } catch (error) {
+        console.error('Failed to send message:', error)
+        // Push error message to the chat
+        this.addMessage('Failed to send message. Please try again.', 'system', 'error')
+      }
     },
     // Handle keyboard events
     handleKeydown(event) {
@@ -122,19 +144,16 @@ export default {
 
 <style scoped>
 .chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
   padding: 20px;
-  padding-bottom: 200px; /* Space for the input area */
-  min-height: 100vh;
   box-sizing: border-box;
-  position: relative;
-  max-width: 600px; /* Limit overall width */
-  margin: 0 auto; /* Center the container */
 }
 
 /* Chat Area */
 .chat-window {
-  width: 100%;
-  height: calc(100vh - 240px); /* Subtract input area height and padding */
+  flex: 1;
   overflow-y: auto;
   border: 1px solid #ebeef5;
   padding: 10px;
@@ -145,14 +164,16 @@ export default {
   margin-bottom: 10px;
   display: flex;
   flex-direction: column;
+  align-items: center; /* Center system messages */
 }
 
 .message-content {
   padding: 8px;
   border-radius: 4px;
   max-width: 70%;
-  word-wrap: break-word; /* Prevent long messages from breaking layout */
-  white-space: pre-wrap; /* Preserve multi-line format */
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  text-align: center; /* Center text for system messages */
 }
 
 .message-time {
@@ -161,47 +182,56 @@ export default {
   margin-top: 4px;
 }
 
-/* Messages sent by the customer */
-.customer .message-content {
+/* Messages sent by the agent (客服) */
+.agent .message-content {
   background-color: #409eff;
   color: white;
-  margin-left: auto; /* Align to the right */
+  margin-left: auto; /* 居右 */
 }
 
-/* Messages sent by the agent */
-.agent .message-content {
+/* Messages sent by the customer (用户) */
+.customer .message-content {
   background-color: #f0f0f0;
   color: #333;
-  margin-right: auto; /* Align to the left */
+  margin-right: auto; /* 居左 */
+}
+
+/* System messages */
+.system.info .message-content {
+  background-color: #e6f7ff;
+  color: #1890ff;
+  font-size: 12px; /* Smaller font size */
+}
+
+.system.warn .message-content {
+  background-color: #fffbe6;
+  color: #faad14;
+  font-size: 12px; /* Smaller font size */
+}
+
+.system.error .message-content {
+  background-color: #fff1f0;
+  color: #ff4d4f;
+  font-size: 12px; /* Smaller font size */
 }
 
 /* Input Area */
 .input-area {
-  position: fixed;
-  bottom: 20px; /* Fixed at the bottom with some spacing */
-  left: 0;
-  right: 0;
-  background: white;
-  padding: 20px;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: flex-end;
   gap: 10px;
-  max-width: 600px; /* Match the width of the chat area */
-  margin: 0 auto; /* Center the input area */
 }
 
 .chat-input :deep(.el-textarea__inner) {
-  border-radius: 8px; /* Rounded corners */
+  border-radius: 8px;
   padding: 10px;
   line-height: 1.5;
   font-size: 14px;
-  resize: none; /* Disable manual resizing */
-  overflow-y: auto; /* Show scrollbar when exceeding max height */
-  padding-right: 60px; /* Space for the send button */
+  resize: none;
+  overflow-y: auto;
+  padding-right: 60px;
 }
 
-/* Send Button */
 .send-button {
   position: absolute;
   right: 30px;
@@ -211,6 +241,6 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%; /* Circular button */
+  border-radius: 50%;
 }
 </style>

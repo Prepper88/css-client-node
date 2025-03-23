@@ -33,6 +33,7 @@ io.on('connection', (socket) => {
   socket.on('customer-inbound', async (customerId) => {
     // bind customerId with socket
     customers.set(customerId, socket)
+    console.log('bind customerId: ' + customerId)
 
     // find session, if not exist active session, create a session
     console.log('creating a session, customerId:' + customerId + ' type: ' + typeof customerId)
@@ -84,16 +85,23 @@ async function sendMessage(customerId, sessionId, message) {
   }
   const url = JAVA_END_URL_PREFIX + '/api/message/send'
 
+  const socket = customers.get(customerId)
+  console.log('socket:' + socket)
+  if (socket === undefined) {
+    error = 'can not find connection for customerId: ' + customerId
+    console.dir('send message error: ' + error)
+  }
   try {
     const response = await axios.post(url, data, {
       headers: {
         'Content-Type': 'application/json', // 设置请求头
       },
     })
-
+    socket.emit('send-message-result', { code: 0, message: 'success' })
     return response
   } catch (error) {
-    console.log('send message error: ' + error)
+    console.dir('send message error: ' + error)
+    socket.emit('send-message-result', { code: -1, message: error })
   }
 }
 
