@@ -1,246 +1,207 @@
 <template>
-  <div class="chat-container">
-    <!-- Chat Area -->
-    <div class="chat-window">
-      <div v-for="(msg, index) in messages" :key="index" class="message" :class="msg.sender">
-        <div class="message-content">
-          <pre>{{ msg.content }}</pre>
-          <!-- Use pre tag to preserve multi-line format -->
-        </div>
-        <div class="message-time">
-          {{ msg.time }}
-        </div>
+  <div class="chat-wrapper">
+    <!-- Top Navigation Bar -->
+    <div class="top-bar">
+      <div class="logo">Customer Support</div>
+      <div class="user-info">
+        <span>{{ currentUser?.username }}</span>
+      </div>
+    </div>
+
+    <!-- Info Box -->
+    <div class="info-box">
+      <p><strong>You are now connected with support.</strong> Please describe your issue below.</p>
+    </div>
+
+    <!-- Chat Messages -->
+    <div class="chat-history">
+      <div
+        v-for="(msg, index) in messages"
+        :key="index"
+        :class="[
+          'chat-bubble',
+          msg.senderType === 'customer'
+            ? 'user-msg'
+            : msg.senderType === 'agent'
+              ? 'agent-msg'
+              : 'system-msg',
+        ]"
+      >
+        <span>{{ msg.message }}</span>
       </div>
     </div>
 
     <!-- Input Area -->
-    <div class="input-area">
-      <el-input
+    <div class="chat-input-area">
+      <input
         v-model="inputMessage"
-        placeholder="Type a message"
-        @keydown.enter="handleKeydown"
-        type="textarea"
-        :autosize="{ minRows: 4, maxRows: 15 }"
-        resize="none"
-        class="chat-input"
+        type="text"
+        placeholder="Type your message..."
+        @keyup.enter="sendMessage"
       />
-      <el-button type="primary" class="send-button" @click="sendMessage">
-        <el-icon><ArrowUp /></el-icon>
-      </el-button>
+      <button @click="sendMessage">Send</button>
     </div>
   </div>
 </template>
 
 <script>
-import { ArrowUp } from '@element-plus/icons-vue'
-import io from 'socket.io-client'
+import { io } from 'socket.io-client'
+import axios from 'axios'
 
 export default {
-  props: {
-    customerId: {
-      type: Number,
-      required: true, // customerId is a required prop
-    },
-  },
+  name: 'Chat',
   data() {
     return {
-      messages: [], // Store chat messages
-      inputMessage: '', // Store the current input message
-      sessionId: null, // Store the session ID
-      socket: null, // Socket instance
+      inputMessage: '',
+      messages: [],
+      socket: null,
+      sessionId: null,
+      currentUser: null,
     }
   },
   mounted() {
-    this.initializeSocket()
+    this.currentUser = JSON.parse(localStorage.getItem('customer'))
+    this.socket = io('http://localhost:3000')
+
+    if (this.currentUser) {
+      this.socket.emit('customer-inbound', this.currentUser.id)
+
+      this.socket.on('session-assigned', (session) => {
+        this.sessionId = session.sessionId
+      })
+
+      this.socket.on('receive-message', (msg) => {
+        this.messages.push(msg)
+      })
+    }
+
+    window.addEventListener('beforeunload', () => {
+      this.socket?.disconnect()
+    })
   },
   methods: {
-    // Initialize socket and send customer-inbound event
-    initializeSocket() {
-      // Connect to the Socket.IO server
-      this.socket = io('http://localhost:3000')
-
-      this.socket.on('connect_error', (error) => {
-        console.error('Connection error:', error.message)
-        this.addMessage(error, 'system', 'error')
-      })
-
-      // Send customer-inbound event with customerId
-      this.socket.emit('customer-inbound', this.customerId)
-
-      // Listen for session-created event
-      this.socket.on('session-created', (sessionId) => {
-        // Save the session ID when received
-        this.sessionId = sessionId
-        console.log('Session created with ID:', this.sessionId)
-      })
-
-      // Listen for incoming messages
-      this.socket.on('message', (data) => {
-        this.addMessage(data.message, data.senderName, 'message')
-      })
-
-      this.socket.on('send-message-result', (result) => {
-        console.log('send-message-result:' + JSON.stringify(result))
-        if (result.code == 0) {
-          // Add the message to the local chat
-          this.addMessage(this.inputMessage, 'customer', 'message')
-          // clear input box
-          this.inputMessage = ''
-        } else {
-          console.error('Failed to send message:', result.message)
-          // Push error message to the chat
-          this.addMessage(result.message, 'system', 'error')
-        }
-      })
-
-      // Listen for system messages
-      this.socket.on('system-message', (data) => {
-        this.addMessage(data.content, 'system', data.type)
-      })
-    },
-    addMessage(content, sender, type = 'message') {
-      this.messages.push({
-        content,
-        sender,
-        type,
-        time: new Date().toLocaleTimeString(),
-      })
-      // Scroll to the bottom
-      this.$nextTick(() => {
-        const chatWindow = this.$el.querySelector('.chat-window')
-        if (chatWindow) chatWindow.scrollTop = chatWindow.scrollHeight
-      })
-    },
-    // Send message
     sendMessage() {
-      if (this.inputMessage.trim() === '') return
-      try {
-        // Send message through Socket.IO
-        this.socket.emit('send-message', {
-          from: this.customerId,
-          sessionId: this.sessionId,
-          message: this.inputMessage,
-        })
-      } catch (error) {
-        console.error('Failed to send message:', error)
-        // Push error message to the chat
-        this.addMessage('Failed to send message. Please try again.', 'system', 'error')
+      if (!this.inputMessage.trim() || !this.sessionId) return
+
+      const msg = {
+        sessionId: this.sessionId,
+        senderId: this.currentUser.id,
+        senderType: 'customer',
+        message: this.inputMessage,
       }
+
+      this.socket.emit('send-message', msg)
+      this.messages.push(msg)
+      this.inputMessage = ''
     },
-    // Handle keyboard events
-    handleKeydown(event) {
-      if (event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault() // Prevent default line break behavior
-        this.sendMessage()
-      }
-      // Allow line break with Shift + Enter
-    },
-  },
-  components: {
-    ArrowUp,
   },
 }
 </script>
 
 <style scoped>
-.chat-container {
-  display: flex;
-  flex-direction: column;
+.chat-wrapper {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 24px 24px;
+  background: #f9f9f9;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   height: 100vh;
-  padding: 20px;
-  box-sizing: border-box;
-}
-
-/* Chat Area */
-.chat-window {
-  flex: 1;
-  overflow-y: auto;
-  border: 1px solid #ebeef5;
-  padding: 10px;
-  margin-bottom: 10px;
-}
-
-.message {
-  margin-bottom: 10px;
   display: flex;
   flex-direction: column;
-  align-items: center; /* Center system messages */
 }
 
-.message-content {
-  padding: 8px;
-  border-radius: 4px;
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #ffffff;
+  padding: 12px 24px;
+  border-bottom: 1px solid #ddd;
+  font-size: 16px;
+}
+
+.user-info {
+  color: #333;
+  font-weight: 500;
+}
+
+.logo {
+  font-weight: bold;
+  color: #007bff;
+}
+
+.info-box {
+  background: #ffffff;
+  padding: 12px 16px;
+  margin-top: 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  text-align: center;
+  color: #333;
+  font-size: 14px;
+}
+
+.chat-history {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 16px 8px;
+  margin-top: 12px;
+}
+
+.chat-bubble {
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin: 6px 0;
   max-width: 70%;
   word-wrap: break-word;
-  white-space: pre-wrap;
-  text-align: center; /* Center text for system messages */
 }
 
-.message-time {
-  font-size: 12px;
-  color: #999;
-  margin-top: 4px;
+.user-msg {
+  background-color: #e6f4ff;
+  align-self: flex-end;
+  margin-left: auto;
+  text-align: right;
 }
 
-/* Messages sent by the agent (客服) */
-.agent .message-content {
-  background-color: #409eff;
-  color: white;
-  margin-left: auto; /* 居右 */
+.agent-msg {
+  background-color: #fff8e1;
+  align-self: flex-start;
+  margin-right: auto;
 }
 
-/* Messages sent by the customer (用户) */
-.customer .message-content {
+.system-msg {
   background-color: #f0f0f0;
-  color: #333;
-  margin-right: auto; /* 居左 */
+  color: #666;
+  font-size: 13px;
+  text-align: center;
+  margin: 10px auto;
 }
 
-/* System messages */
-.system.info .message-content {
-  background-color: #e6f7ff;
-  color: #1890ff;
-  font-size: 12px; /* Smaller font size */
-}
-
-.system.warn .message-content {
-  background-color: #fffbe6;
-  color: #faad14;
-  font-size: 12px; /* Smaller font size */
-}
-
-.system.error .message-content {
-  background-color: #fff1f0;
-  color: #ff4d4f;
-  font-size: 12px; /* Smaller font size */
-}
-
-/* Input Area */
-.input-area {
+.chat-input-area {
   display: flex;
-  align-items: flex-end;
-  gap: 10px;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid #e0e0e0;
 }
 
-.chat-input :deep(.el-textarea__inner) {
-  border-radius: 8px;
-  padding: 10px;
-  line-height: 1.5;
-  font-size: 14px;
-  resize: none;
-  overflow-y: auto;
-  padding-right: 60px;
+.chat-input-area input {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
 }
 
-.send-button {
-  position: absolute;
-  right: 30px;
-  bottom: 30px;
-  height: 40px;
-  width: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
+.chat-input-area button {
+  background-color: #007bff;
+  color: white;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.chat-input-area button:hover {
+  background-color: #0069d9;
 }
 </style>
