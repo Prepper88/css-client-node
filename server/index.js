@@ -36,17 +36,17 @@ io.on('connection', (socket) => {
     console.log('bind customerId: ' + customerId)
 
     // find session, if not exist active session, create a session
-    console.log('creating a session, customerId:' + customerId + ' type: ' + typeof customerId)
-    const response = await createSession(customerId)
-    console.log('Session created, sessionId:' + response.data.sessionId)
-    socket.emit('session-created', response.data.sessionId)
+    console.log('load session, customerId:' + customerId)
+    const response = await loadSession(customerId)
+    console.log('session loaded, session:' + response.data)
+    socket.emit('session-assigned', response.data)
 
     //assignAgentToCustomer(customerId)
   })
 
   // 消息转发
-  socket.on('send-message', async ({ from, sessionId, message }) => {
-    await sendMessage(from, sessionId, message)
+  socket.on('send-message', async ({ senderId, sessionId, message }) => {
+    await sendMessage(senderId, sessionId, message)
   })
 
   // 断开连接
@@ -62,9 +62,9 @@ io.on('connection', (socket) => {
   })
 })
 
-// 创建会话的函数
-async function createSession(customerId) {
-  const url = JAVA_END_URL_PREFIX + '/api/session/create?customerId=' + customerId
+// Load session
+async function loadSession(customerId) {
+  const url = JAVA_END_URL_PREFIX + '/api/session/loadOrCreate?customerId=' + customerId
 
   const response = await axios.post(url, null, {
     headers: {
@@ -90,6 +90,7 @@ async function sendMessage(customerId, sessionId, message) {
   if (socket === undefined) {
     error = 'can not find connection for customerId: ' + customerId
     console.dir('send message error: ' + error)
+    return
   }
   try {
     const response = await axios.post(url, data, {
@@ -107,17 +108,17 @@ async function sendMessage(customerId, sessionId, message) {
 
 // HTTP API for pushing messages to customers
 app.post('/api/push-message', (req, res) => {
-  const { sendId, sendName, customerId, message } = req.body
+  const { sendId, senderType, customerId, message } = req.body
 
-  console.log('push message, sendTo: ' + sendId + ' message:' + message)
+  console.log('push message, senderId: ' + sendId + ' message:' + message)
 
   // Find the socket for the customer
   const socket = customers.get(customerId)
   if (socket) {
     // Send the message to the customer
-    socket.emit('message', {
+    socket.emit('message-received', {
       sendId,
-      sendName,
+      senderType,
       message,
       time: new Date().toLocaleTimeString(),
     })

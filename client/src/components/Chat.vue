@@ -24,7 +24,9 @@
             ? 'user-msg'
             : msg.senderType === 'agent'
               ? 'agent-msg'
-              : 'system-msg',
+              : msg.senderType === 'system'
+                ? 'system-msg'
+                : 'robot-msg',
         ]"
       >
         <span>{{ msg.message }}</span>
@@ -68,9 +70,11 @@ export default {
 
       this.socket.on('session-assigned', (session) => {
         this.sessionId = session.sessionId
+        this.messages = session.messages
       })
 
-      this.socket.on('receive-message', (msg) => {
+      this.socket.on('message-received', (msg) => {
+        console.log('receive message: ', msg)
         this.messages.push(msg)
       })
     }
@@ -143,6 +147,8 @@ export default {
 }
 
 .chat-history {
+  display: flex;
+  flex-direction: column;
   flex-grow: 1;
   overflow-y: auto;
   padding: 16px 8px;
@@ -153,26 +159,32 @@ export default {
   padding: 10px 14px;
   border-radius: 8px;
   margin: 6px 0;
-  max-width: 70%;
   word-wrap: break-word;
 }
 
 .user-msg {
-  background-color: #e6f4ff;
+  background-color: #dcf8c6;
   align-self: flex-end;
+  max-width: 60%;
   margin-left: auto;
   text-align: right;
 }
 
 .agent-msg {
-  background-color: #fff8e1;
+  background-color: #e8f0fe;
+  align-self: flex-start;
+  margin-right: auto;
+}
+
+.robot-msg {
+  background-color: #f3f3f3;
   align-self: flex-start;
   margin-right: auto;
 }
 
 .system-msg {
-  background-color: #f0f0f0;
-  color: #666;
+  background-color: transparent;
+  color: #999999;
   font-size: 13px;
   text-align: center;
   margin: 10px auto;
