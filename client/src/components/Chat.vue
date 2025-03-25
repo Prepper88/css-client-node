@@ -14,23 +14,7 @@
     </div>
 
     <!-- Chat Messages -->
-    <div class="chat-history">
-      <!-- <div
-        v-for="(msg, index) in messages"
-        :key="index"
-        :class="[
-          'chat-bubble',
-          msg.senderType === 'customer'
-            ? 'user-msg'
-            : msg.senderType === 'agent'
-              ? 'agent-msg'
-              : msg.senderType === 'system'
-                ? 'system-msg'
-                : 'robot-msg',
-        ]"
-      >
-        <span>{{ msg.message }}</span>
-      </div> -->
+    <div class="chat-history" ref="messageContainer">
       <ChatMessage
         v-for="(msg, index) in messages"
         :key="index"
@@ -39,28 +23,19 @@
         :message="msg.message"
       />
     </div>
-
-    <!-- Input Area -->
-    <div class="chat-input-area">
-      <input
-        v-model="inputMessage"
-        type="text"
-        placeholder="Type your message..."
-        @keyup.enter="sendMessage"
-      />
-      <button @click="sendMessage">Send</button>
-    </div>
+    <ChatInput v-model="inputMessage" @send="sendMessage" />
   </div>
 </template>
 
 <script>
 import { io } from 'socket.io-client'
 import ChatMessage from '@/components/ChatMessage.vue'
+import ChatInput from '@/components/ChatInput.vue'
 import axios from 'axios'
 
 export default {
   name: 'Chat',
-  components: { ChatMessage },
+  components: { ChatMessage, ChatInput },
   data() {
     return {
       inputMessage: '',
@@ -106,6 +81,13 @@ export default {
       this.socket.emit('send-message', msg)
       this.messages.push(msg)
       this.inputMessage = ''
+
+      this.$nextTick(() => {
+        const container = this.$refs.messageContainer
+        if (container) {
+          container.scrollTop = container.scrollHeight
+        }
+      })
     },
   },
 }
