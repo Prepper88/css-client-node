@@ -15,7 +15,7 @@
 
     <!-- Chat Messages -->
     <div class="chat-history">
-      <div
+      <!-- <div
         v-for="(msg, index) in messages"
         :key="index"
         :class="[
@@ -30,7 +30,14 @@
         ]"
       >
         <span>{{ msg.message }}</span>
-      </div>
+      </div> -->
+      <ChatMessage
+        v-for="(msg, index) in messages"
+        :key="index"
+        :senderType="msg.senderType"
+        :senderName="msg.senderName || msg.senderType"
+        :message="msg.message"
+      />
     </div>
 
     <!-- Input Area -->
@@ -48,10 +55,12 @@
 
 <script>
 import { io } from 'socket.io-client'
+import ChatMessage from '@/components/ChatMessage.vue'
 import axios from 'axios'
 
 export default {
   name: 'Chat',
+  components: { ChatMessage },
   data() {
     return {
       inputMessage: '',
@@ -183,8 +192,7 @@ export default {
 }
 
 .system-msg {
-  background-color: transparent;
-  color: #999999;
+  background-color: #fff4e5;
   font-size: 13px;
   text-align: center;
   margin: 10px auto;
