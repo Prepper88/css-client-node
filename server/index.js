@@ -104,21 +104,16 @@ async function sendMessage(msg) {
 
 // HTTP API for pushing messages to customers
 app.post('/api/push-message', (req, res) => {
-  const { senderId, senderType, customerId, messageType, content } = req.body
+  const msg = req.body
 
-  console.log('push message, senderId: ' + senderId + ' message:' + content)
+  const customerId = msg.customerId
+  console.log('push message: ', msg)
 
   // Find the socket for the customer
   const socket = customers.get(customerId)
   if (socket) {
     // Send the message to the customer
-    socket.emit('message-received', {
-      senderId,
-      senderType,
-      messageType,
-      content,
-      time: new Date().toLocaleTimeString(),
-    })
+    socket.emit('message-received', msg)
     res.status(200).json({ success: true, message: 'Message sent to customer' })
   } else {
     res.status(404).json({ success: false, message: 'Customer not connected' })

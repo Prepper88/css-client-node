@@ -25,16 +25,20 @@ export default {
     senderType: String,
     content: String,
     senderName: String,
+    messageType: String,
   },
   computed: {
     senderTypeClass() {
-      return this.senderType || 'system'
+      return this.messageType === 'system-notice' ? 'system' : this.senderType
+    },
+    isSystemNotice() {
+      return this.messageType === 'system-notice'
     },
     isSelf() {
       return this.senderType === 'customer'
     },
     showAvatar() {
-      return this.senderType !== 'system' // 系统消息不显示头像
+      return this.messageType !== 'system-notice' // 系统消息不显示头像
     },
     avatarSvg() {
       if (this.senderType === 'agent') {

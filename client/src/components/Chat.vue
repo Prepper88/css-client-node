@@ -21,6 +21,7 @@
         :senderType="msg.senderType"
         :senderName="msg.senderName || msg.senderType"
         :content="msg.content"
+        :messageType="msg.messageType"
       />
     </div>
     <ChatInput v-model="inputMessage" @send="sendMessage" />
