@@ -20,7 +20,7 @@
         :key="index"
         :senderType="msg.senderType"
         :senderName="msg.senderName || msg.senderType"
-        :message="msg.message"
+        :content="msg.content"
       />
     </div>
     <ChatInput v-model="inputMessage" @send="sendMessage" />
@@ -60,6 +60,13 @@ export default {
       this.socket.on('message-received', (msg) => {
         console.log('receive message: ', msg)
         this.messages.push(msg)
+
+        this.$nextTick(() => {
+          const container = this.$refs.messageContainer
+          if (container) {
+            container.scrollTop = container.scrollHeight
+          }
+        })
       })
     }
 
@@ -75,7 +82,8 @@ export default {
         sessionId: this.sessionId,
         senderId: this.currentUser.id,
         senderType: 'customer',
-        message: this.inputMessage,
+        messageType: 'text',
+        content: this.inputMessage,
       }
 
       this.socket.emit('send-message', msg)

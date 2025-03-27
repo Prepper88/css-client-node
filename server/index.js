@@ -45,8 +45,8 @@ io.on('connection', (socket) => {
   })
 
   // 消息转发
-  socket.on('send-message', async ({ senderId, sessionId, message }) => {
-    await sendMessage(senderId, sessionId, message)
+  socket.on('send-message', async (msg) => {
+    await sendMessage(msg)
   })
 
   // 断开连接
@@ -76,14 +76,10 @@ async function loadSession(customerId) {
 }
 
 // send message
-async function sendMessage(customerId, sessionId, message) {
-  const data = {
-    senderId: customerId,
-    senderType: 'customer',
-    sessionId: sessionId,
-    message: message,
-  }
+async function sendMessage(msg) {
+  const data = msg
   const url = JAVA_END_URL_PREFIX + '/api/message/send'
+  const customerId = msg.senderId
 
   const socket = customers.get(customerId)
   console.log('socket:' + socket)
@@ -108,9 +104,9 @@ async function sendMessage(customerId, sessionId, message) {
 
 // HTTP API for pushing messages to customers
 app.post('/api/push-message', (req, res) => {
-  const { senderId, senderType, customerId, message } = req.body
+  const { senderId, senderType, customerId, messageType, content } = req.body
 
-  console.log('push message, senderId: ' + senderId + ' message:' + message)
+  console.log('push message, senderId: ' + senderId + ' message:' + content)
 
   // Find the socket for the customer
   const socket = customers.get(customerId)
@@ -119,7 +115,8 @@ app.post('/api/push-message', (req, res) => {
     socket.emit('message-received', {
       senderId,
       senderType,
-      message,
+      messageType,
+      content,
       time: new Date().toLocaleTimeString(),
     })
     res.status(200).json({ success: true, message: 'Message sent to customer' })

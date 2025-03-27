@@ -9,7 +9,7 @@
     ></div>
 
     <!-- 内容气泡 -->
-    <span class="message-content">{{ message }}</span>
+    <span class="message-content">{{ content }}</span>
   </div>
 </template>
 
@@ -23,7 +23,7 @@ export default {
   compoments: [multiavatar],
   props: {
     senderType: String,
-    message: String,
+    content: String,
     senderName: String,
   },
   computed: {
@@ -31,7 +31,7 @@ export default {
       return this.senderType || 'system'
     },
     isSelf() {
-      return this.senderType === 'agent' || this.senderType === 'robot'
+      return this.senderType === 'customer'
     },
     showAvatar() {
       return this.senderType !== 'system' // 系统消息不显示头像
@@ -58,10 +58,10 @@ export default {
 }
 .message.robot,
 .message.agent {
-  align-self: flex-end;
+  align-self: flex-start;
 }
 .message.customer {
-  align-self: flex-start;
+  align-self: flex-end;
 }
 .message.system {
   align-self: center;
