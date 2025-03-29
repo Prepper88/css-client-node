@@ -47,6 +47,18 @@
       :selected="true"
     ></OrderCard>
   </div>
+  <div v-if="messageType === 'service-progress-card'" name="serviceProgress">
+    <div :class="['message', senderTypeClass]" style="justify-content: flex-start">
+      <div
+        v-if="showAvatar"
+        class="message-avatar"
+        :class="{ right: isSelf }"
+        v-html="avatarSvg"
+      ></div>
+      <span class="message-content">The current service progress is as follows: </span>
+    </div>
+    <ServiceProgressCard :currentStatus="content"></ServiceProgressCard>
+  </div>
 </template>
 
 <script>
@@ -55,10 +67,11 @@ import avatarRobot from '@/assets/robot.svg?raw'
 import avatarAgent from '@/assets/agent.svg?raw'
 import OrderList from './OrderList.vue'
 import OrderCard from './OrderCard.vue'
+import ServiceProgressCard from './ServiceProgressCard.vue'
 
 export default {
   name: 'ChatMessage',
-  components: { OrderList, OrderCard },
+  components: { OrderList, OrderCard, ServiceProgressCard },
   props: {
     senderType: String,
     senderName: String,
@@ -103,6 +116,7 @@ export default {
       return ''
     },
   },
+  methods: {},
 }
 </script>
 
