@@ -66,13 +66,16 @@ io.on('connection', (socket) => {
 async function loadSession(customerId) {
   const url = JAVA_END_URL_PREFIX + '/api/session/loadOrCreate?customerId=' + customerId
 
-  const response = await axios.post(url, null, {
-    headers: {
-      'Content-Type': 'application/json', // 设置请求头
-    },
-  })
-
-  return response
+  try {
+    const response = await axios.post(url, null, {
+      headers: {
+        'Content-Type': 'application/json', // 设置请求头
+      },
+    })
+    return response
+  } catch (error) {
+    console.log('load session fail', error)
+  }
 }
 
 // send message
