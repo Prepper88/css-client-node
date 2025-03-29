@@ -39,3 +39,6 @@ const app = createApp(App)
 app.use(ElementPlus)
 app.use(router)
 app.mount('#app')
+app.config.warnHandler = (msg, vm, trace) => {
+  console.warn('[Vue warn]: ' + msg + trace)
+}

@@ -1,15 +1,51 @@
 <template>
-  <div :class="['message', senderTypeClass]">
-    <!-- Avatar（靠左或靠右） -->
+  <div
+    v-if="messageType === 'text' || messageType === 'system-notice'"
+    :class="['message', senderTypeClass]"
+  >
     <div
       v-if="showAvatar"
       class="message-avatar"
       :class="{ right: isSelf }"
       v-html="avatarSvg"
     ></div>
-
-    <!-- 内容气泡 -->
     <span class="message-content">{{ content }}</span>
+  </div>
+
+  <div v-if="messageType === 'order-list'">
+    <div :class="['message', senderTypeClass]">
+      <div
+        v-if="showAvatar"
+        class="message-avatar"
+        :class="{ right: isSelf }"
+        v-html="avatarSvg"
+      ></div>
+      <span class="message-content">{{ orderListMessageBody.messageTitle }}</span>
+    </div>
+    <OrderList :orders="orderListMessageBody.orderCards"></OrderList>
+  </div>
+
+  <div v-if="messageType === 'order-card'">
+    <div :class="['message', senderTypeClass]" style="justify-content: flex-end">
+      <div
+        v-if="showAvatar"
+        class="message-avatar"
+        :class="{ right: isSelf }"
+        v-html="avatarSvg"
+      ></div>
+      <span class="message-content">This is the order I'd like to consult about:</span>
+    </div>
+    <OrderCard
+      :id="orderCard.id"
+      :order-id="orderCard.orderId"
+      :order-title="orderCard.orderTitle"
+      :price="orderCard.price"
+      :pay-status="orderCard.payStatus"
+      :delivery-status="orderCard.deliveryStatus"
+      :created-at="orderCard.createdAt"
+      :image-name="orderCard.imageName"
+      :selected="true"
+    ></OrderCard>
   </div>
 </template>
 
@@ -17,17 +53,33 @@
 import multiavatar from '@multiavatar/multiavatar'
 import avatarRobot from '@/assets/robot.svg?raw'
 import avatarAgent from '@/assets/agent.svg?raw'
+import OrderList from './OrderList.vue'
+import OrderCard from './OrderCard.vue'
 
 export default {
   name: 'ChatMessage',
-  compoments: [multiavatar],
+  components: { OrderList, OrderCard },
   props: {
     senderType: String,
-    content: String,
     senderName: String,
+    content: String,
     messageType: String,
   },
   computed: {
+    orderListMessageBody() {
+      if (this.messageType === 'order-list' && this.content) {
+        return JSON.parse(this.content)
+      } else {
+        return {}
+      }
+    },
+    orderCard() {
+      if (this.messageType === 'order-card' && this.content) {
+        return JSON.parse(this.content)
+      } else {
+        return {}
+      }
+    },
     senderTypeClass() {
       return this.messageType === 'system-notice' ? 'system' : this.senderType
     },
@@ -38,7 +90,7 @@ export default {
       return this.senderType === 'customer'
     },
     showAvatar() {
-      return this.messageType !== 'system-notice' // 系统消息不显示头像
+      return this.messageType !== 'system-notice'
     },
     avatarSvg() {
       if (this.senderType === 'agent') {

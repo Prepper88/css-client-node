@@ -32,11 +32,11 @@
 import { io } from 'socket.io-client'
 import ChatMessage from '@/components/ChatMessage.vue'
 import ChatInput from '@/components/ChatInput.vue'
-import axios from 'axios'
 
 export default {
   name: 'Chat',
   components: { ChatMessage, ChatInput },
+  computed: {},
   data() {
     return {
       inputMessage: '',
@@ -75,16 +75,24 @@ export default {
       this.socket?.disconnect()
     })
   },
+  provide() {
+    return {
+      sendOrderCard: this.sendOrderCard,
+    }
+  },
   methods: {
     sendMessage() {
       if (!this.inputMessage.trim() || !this.sessionId) return
 
+      this.sendMsgRaw('text', this.inputMessage)
+    },
+    sendMsgRaw(messageType, content) {
       const msg = {
         sessionId: this.sessionId,
         senderId: this.currentUser.id,
         senderType: 'customer',
-        messageType: 'text',
-        content: this.inputMessage,
+        messageType: messageType,
+        content: content,
       }
 
       this.socket.emit('send-message', msg)
@@ -97,6 +105,9 @@ export default {
           container.scrollTop = container.scrollHeight
         }
       })
+    },
+    sendOrderCard(orderCard) {
+      this.sendMsgRaw('order-card', JSON.stringify(orderCard))
     },
   },
 }
